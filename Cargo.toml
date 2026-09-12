@@ -1,0 +1,24 @@
+[package]
+name = "appscan"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.90"
+description = "Scan with SANE scanners (and the Epson Perfection 2480/2580) from a GTK app or the command line"
+license = "MIT"
+repository = "https://github.com/matteospanio/appscan"
+authors = ["Matteo Spanio"]
+publish = false
+
+[dependencies]
+adw = { package = "libadwaita", version = "0.8", features = ["v1_1"] }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+gtk = { package = "gtk4", version = "0.10", features = ["v4_6"] }
+jpeg-encoder = "0.7"
+libc = "0.2"
+miniz_oxide = "0.8"
+pdf-writer = "0.15"
+
+[profile.release]
+lto = "thin"
+strip = true

@@ -1,9 +1,11 @@
-.TH APPSCAN 1 "September 2026" "appscan 0.1.0" "User Commands"
+.TH APPSCAN 1 "September 2026" "appscan 0.2.0" "User Commands"
 .SH NAME
-appscan \- scan with the Epson Perfection 2480/2580 PHOTO on Linux
+appscan \- scan documents and photos with SANE scanners
 .SH SYNOPSIS
 .B appscan
-.RB [ gui ]
+.RB [ gui
+.RB [ \-d
+.IR NAME ]]
 .br
 .B appscan scan
 .I OUTPUT
@@ -12,71 +14,105 @@ appscan \- scan with the Epson Perfection 2480/2580 PHOTO on Linux
 .B appscan list
 .br
 .B appscan warmup
+.RB [ \-d
+.IR NAME ]
 .br
 .B appscan reset
 .br
 .B appscan firmware
 .br
+.B appscan setup
+.RB [ \-\-remove ]
+.br
 .B appscan
 .BR \-\-version " | " \-h
 .SH DESCRIPTION
 .B appscan
-is a command\-line tool and Tk graphical interface for the Epson Perfection
-2480 PHOTO and 2580 PHOTO flatbed scanners.
-It is a thin layer over the
-.B snapscan
-backend of SANE: every scan is performed by
+is a command\-line tool and GTK graphical interface for scanners supported by
+SANE.
+Every scan is performed by
 .BR scanimage (1),
-driven with a private SANE configuration that
-.B appscan
-writes itself.
-No changes to
+and the choices offered for each option (modes, resolutions, sources and so
+on) are read from the selected scanner with
+.BR "scanimage \-A" .
+Nothing has to run as root and no changes to
 .I /etc/sane.d
-are needed and nothing has to run as root.
+are needed.
 .PP
-These scanners need Epson's firmware uploaded every time they are powered on.
+Most scanners work without any special handling.
+Models that need more get a built\-in
+.IR "quirk profile" ,
+matched by SANE backend and USB ID.
+A profile gives the scanner a private SANE configuration, the firmware it
+needs, a lamp warm\-up, and a safe way to cancel: if interrupting the scanner
+before image data flows would leave it hanging,
+.B appscan
+kills
+.BR scanimage (1)
+and resets the scanner over USB instead.
+The only profile so far is for the Epson Perfection 2480 PHOTO and 2580 PHOTO
+.RB ( snapscan
+backend, USB ID 04b8:0121).
+.PP
+The Epson scanners need Epson's firmware uploaded every time they are powered
+on.
 Run
 .B appscan firmware
 once to download and install it; after that, the upload happens automatically
 the first time the scanner is used after power\-on.
-Until the firmware is installed, every command except
-.B firmware
-and
-.B reset
-fails with an error, and the GUI cannot scan.
-.PP
+The Epson scanners cannot be used until the firmware is installed.
+.SS "Graphical interface"
 Without a command,
 .B appscan
-opens the graphical interface.
-It offers drop\-down lists for source, mode, resolution and depth, sliders for
-brightness and contrast (\-100 to 100 in steps of 5, disabled in
+opens a GTK4/libadwaita window.
+Starting it again brings the open window to the front.
+.PP
+The sidebar has three groups.
+.B Scanner
+selects the device, with a button to look for scanners again.
+.B Settings
+has drop\-down lists for source, mode, resolution and depth, and sliders for
+brightness and contrast; a setting the scanner does not have is hidden, and
+one the current mode does not use (brightness, contrast and depth in
 .B Lineart
-mode; double\-click a slider to reset it), a
-.B Preview
-button (a colour scan of the whole area at 50\ dpi), and an area selection
-made by dragging on the preview; without a selection the whole area is scanned.
-.B Scan\&...\&
-asks where to save the file; as with
-.BR "appscan scan" ,
-its extension selects the format.
-Multi\-page PDF documents are built with
+mode on the Epson) is disabled.
+The sliders cover the scanner's range, limited to \-100 to 100, in steps of 5;
+double\-click a slider to reset it.
+.B Multi\-page PDF
+shows the number of pages waiting to be saved and has the
 .BR "Add page" ,
 .B "Save PDF\&...\&"
 and
-.BR Discard ;
-while pages are waiting to be saved the resolution cannot be changed.
-A progress bar and a
+.B Discard
+buttons.
+Every page keeps the settings it was scanned with, so the resolution and mode
+can change between pages.
+.PP
+The header bar has
+.B Preview
+(a quick low\-resolution scan of the whole area),
+.B Scan\&...\&
+(asks where to save the file; as with
+.BR "appscan scan" ,
+its extension selects the format), and
 .B Cancel
-button follow the running scan.
-On start the GUI warms up the lamp in the background; the scan buttons stay
-disabled until it is done.
+while a task is running.
+Drag on the preview to select the area to scan; without a selection the whole
+area is scanned.
+Changing the source clears the preview and the selection.
+A progress bar and a status line follow the running task, and short
+notifications report saved files, added pages and cancelled scans.
+.PP
+On start the GUI looks for scanners and reads the options of the selected
+one; for a scanner whose profile needs a warm\-up it also warms up the lamp,
+and the scan buttons stay disabled until that is done.
 Closing the window, or pressing
 .B Ctrl\-C
 in the terminal that started it, cancels a running scan (or waits for a file
 being written), and asks first if PDF pages have not been saved.
 .SH COMMANDS
 .TP
-.B gui
+\fBgui\fR [\fB\-d\fR \fINAME\fR]
 Open the graphical interface.
 This is the default when no command is given.
 .TP
@@ -88,37 +124,60 @@ The file type is chosen by its extension; see
 below.
 Progress is printed on standard error.
 .B Ctrl\-C
-cancels the scan; if it is cancelled before image data starts flowing, or the
-cancel does not finish within 10 seconds, the scanner is reset and its lamp
-must warm up again.
+cancels the scan.
+For a scanner with a profile such as the Epson, a cancel before image data
+starts flowing, or one that does not finish within 10 seconds, kills
+.BR scanimage (1)
+and resets the scanner, whose lamp must then warm up again.
 .TP
 .B list
-List the detected scanners by SANE device name, for example
-.BR snapscan:libusb:001:011 ,
-or print
-.B No scanner found
-if there is none.
-The bus and device numbers change whenever the scanner is replugged.
+List the detected scanners, one per line: the SANE device name, a tab, and a
+description.
+Scanners with a quirk profile come first, followed by all the other SANE
+devices.
+Device names such as
+.B snapscan:libusb:001:011
+contain USB bus and device numbers, which change whenever the scanner is
+replugged.
 .TP
-.B warmup
+\fBwarmup\fR [\fB\-d\fR \fINAME\fR]
 Switch the lamp on and wait until it is warm, so that the next scan starts
 immediately.
-A cold lamp needs about 30\(en40 seconds after power\-on or a reset.
+The lamp of the Epson scanners needs about 30\(en40 seconds after power\-on or
+a reset.
 .TP
 .B reset
-Reset the scanner's USB connection when it stops responding, which has the
-same effect as unplugging and replugging it.
+Reset the USB connection of every connected scanner that has a quirk profile,
+which has the same effect as unplugging and replugging it.
+Use it when such a scanner stops responding.
 The lamp needs to warm up again afterwards.
 .TP
 .B firmware
-Download Epson's Windows driver from
+Install the firmware for the profiles that need one.
+For the Epson 2480/2580 this downloads Epson's Windows driver (Epson Scan
+3.04A) from
 .br
 \%https://ftp.epson.com/drivers/epson12204.exe,
 .br
-extract
+extracts
 .I esfw41.bin
-from it, verify its SHA\-256 checksum and install it.
+from it, verifies its SHA\-256 checksum and installs it.
 The same file serves both the 2480 and the 2580.
+The firmware is proprietary software of Seiko Epson Corporation;
+.B appscan
+does not include or redistribute it.
+.TP
+\fBsetup\fR [\fB\-\-remove\fR]
+Install the desktop menu entry (pointing at the absolute path of the running
+binary), the application icon and this manual page under
+.IR $XDG_DATA_HOME ,
+then refresh the icon cache and the manual page index when possible.
+It also removes the desktop entry of older versions.
+With
+.BR \-\-remove ,
+delete those files and the data directory
+.I $XDG_DATA_HOME/appscan
+(firmware and SANE configuration) instead; the binary itself is left in place.
 .SH OPTIONS
 .SS "Global options"
 .TP
@@ -129,7 +188,33 @@ Print the version number and exit.
 Print a usage summary and exit.
 Also accepted after a command, as in
 .BR "appscan scan \-h" .
+.SS "Options for gui, scan and warmup"
+.TP
+\fB\-d\fR, \fB\-\-device\fR \fINAME\fR
+The SANE device to use, as printed by
+.BR "appscan list" .
+Default: the first scanner in that list.
 .SS "Options for scan"
+The valid values of
+.BR \-\-mode ,
+.BR \-\-resolution ,
+.BR \-\-depth ,
+.BR \-\-source ,
+.BR \-\-area ,
+.B \-\-brightness
+and
+.B \-\-contrast
+depend on the scanner, and the values in this section are those of the Epson
+Perfection 2480 PHOTO.
+Run
+.B scanimage \-d
+.I NAME
+.B \-A
+to see what another scanner offers.
+A value that is not one of the scanner's choices or is out of its range, or an
+option the scanner does not have, is a usage error.
+An option that is inactive in the chosen mode or source is silently ignored.
+When an option is not given, the scanner's default is used.
 .TP
 .I OUTPUT
 The file to write.
@@ -145,25 +230,28 @@ or
 .BR .pdf ,
 in upper or lower case.
 .TP
-\fB\-\-mode\fR {\fBColor\fR|\fBGray\fR|\fBLineart\fR}
-Colour mode.
+\fB\-\-mode\fR \fIMODE\fR
+Colour mode; on the Epson one of
+.BR Color ,
+.BR Halftone ,
+.B Gray
+or
+.BR Lineart .
 .B Lineart
-produces pure black and white, suited to text and fax\-like documents;
-it ignores
+produces pure black and white, suited to text and fax\-like documents; the
+Epson ignores
 .BR \-\-brightness ,
 .B \-\-contrast
 and
-.BR \-\-depth .
-Default:
-.BR Color .
+.B \-\-depth
+in this mode.
 .TP
 \fB\-r\fR, \fB\-\-resolution\fR \fIDPI\fR
-Resolution in dots per inch; one of 50, 75, 100, 150, 200, 300, 400, 600,
-1200 or 2400.
-Default: 300.
+Resolution in dots per inch; on the Epson one of 50, 75, 100, 150, 200, 300,
+400, 600, 1200 or 2400, with 300 as the default.
 .TP
-\fB\-\-depth\fR {\fB8\fR|\fB16\fR}
-Bits per colour channel.
+\fB\-\-depth\fR \fIN\fR
+Bits per colour channel; 8 or 16 on the Epson.
 A depth of 16 needs
 .BR .png ,
 .B .tif
@@ -175,45 +263,34 @@ output; with
 .B .jpg
 or
 .B .jpeg
-it is an error, even in
-.B Lineart
-mode.
-The depth is ignored in
-.B Lineart
-mode and for
+it is an error.
+The depth is ignored for
 .B .pdf
 output.
-Default: 8.
 .TP
-\fB\-\-source\fR {\fBFlatbed\fR|\fB"Transparency Adapter"\fR}
-Where to scan from.
-The transparency adapter is the unit for film and slides; its scan area is
-55\(mu125\ mm on the 2480 (see
+\fB\-\-source\fR \fISOURCE\fR
+Where to scan from; on the Epson
+.B Flatbed
+or
+.BR "\(dqTransparency Adapter\(dq" ,
+the unit for film and slides, whose scan area is 55\(mu125\ mm on the 2480
+(see
 .B BUGS
 for the 2580).
-Quote the value in the shell, since it contains a space.
-Default:
-.BR Flatbed .
+Quote a value that contains a space.
 .TP
 \fB\-\-area\fR \fILEFT TOP WIDTH HEIGHT\fR
 The area to scan, in millimetres, measured from the top\-left corner of the
 scan area of the source.
 Decimal values are accepted.
-Default: the whole scan area of the source (216\(mu297\ mm on the flatbed).
+Default: the whole scan area of the source (216\(mu297\ mm on the flatbed of
+the Epson).
 .TP
 \fB\-\-brightness\fR \fIPERCENT\fR
-Brightness adjustment, a whole number from \-400 to 400.
-Ignored in
-.B Lineart
-mode.
-Default: 0.
+Brightness adjustment, a whole number; from \-400 to 400 on the Epson.
 .TP
 \fB\-\-contrast\fR \fIPERCENT\fR
-Contrast adjustment, a whole number from \-100 to 400.
-Ignored in
-.B Lineart
-mode.
-Default: 0.
+Contrast adjustment, a whole number; from \-100 to 400 on the Epson.
 .TP
 \fB\-\-pages\fR \fIN\fR
 Only for PDF output: scan
@@ -238,23 +315,26 @@ The folder of
 .I OUTPUT
 must be writable; this is checked before scanning starts.
 .PP
-PDF output ignores
-.BR \-\-depth :
-colour and grey pages are 8 bits per channel and JPEG\-compressed, and a PDF
-made only of
+.B appscan
+assembles PDF files itself and encodes each page on its own: colour and grey
+pages are 8 bits per channel and JPEG\-compressed, and
 .B Lineart
-pages is 1 bit per pixel and lossless.
-A PDF that mixes
-.B Lineart
-pages with colour or grey pages (possible in the GUI) stores them all as
-JPEG.
+pages are 1 bit per pixel and lossless, even in a PDF that mixes both kinds
+(possible in the GUI).
+Each page size matches the scanned area at the resolution of that page.
 An existing file is replaced only once the new PDF has been written
 completely.
-.B appscan
-assembles the PDF itself from the scanned pages, and each page size matches
-the scanned area at the chosen resolution.
 .SH EXAMPLES
-Quick colour scan of a document at the default 300\ dpi:
+List the connected scanners (the two fields are separated by a tab):
+.PP
+.RS 4
+.EX
+$ appscan list
+snapscan:libusb:001:011	Epson Perfection 2480/2580 PHOTO
+.EE
+.RE
+.PP
+Quick colour scan of a document with the scanner's default settings:
 .PP
 .RS 4
 .EX
@@ -262,11 +342,11 @@ appscan scan letter.png
 .EE
 .RE
 .PP
-Greyscale scan at 600\ dpi:
+Greyscale scan at 600\ dpi with a specific scanner:
 .PP
 .RS 4
 .EX
-appscan scan \-\-mode Gray \-r 600 page.png
+appscan scan \-d snapscan:libusb:001:011 \-\-mode Gray \-r 600 page.png
 .EE
 .RE
 .PP
@@ -350,7 +430,7 @@ done
 .EE
 .RE
 .PP
-Recover when the scanner stops answering:
+Recover when the Epson stops answering:
 .PP
 .RS 4
 .EX
@@ -360,20 +440,22 @@ appscan scan retry.png
 .EE
 .RE
 .PP
-List the connected scanners:
-.PP
-.RS 4
-.EX
-$ appscan list
-snapscan:libusb:001:011
-.EE
-.RE
-.PP
-Install the firmware (needed once, before the first scan):
+Install the firmware (needed once, before the first scan with an Epson
+2480/2580):
 .PP
 .RS 4
 .EX
 appscan firmware
+.EE
+.RE
+.PP
+Install the desktop entry, icon and manual page after copying the binary by
+hand, and remove them again:
+.PP
+.RS 4
+.EX
+appscan setup
+appscan setup \-\-remove
 .EE
 .RE
 .PP
@@ -390,17 +472,22 @@ SANE_DEBUG_SNAPSCAN=30 appscan scan test.png 2> snapscan.log
 .RE
 .SH FILES
 .TP
+.I \(ti/.local/bin/appscan
+The program, as installed by
+.IR install.sh .
+.TP
 .I $XDG_DATA_HOME/appscan/
 Data directory; defaults to
 .IR \(ti/.local/share/appscan/ .
 .TP
 .I $XDG_DATA_HOME/appscan/esfw41.bin
-The scanner firmware, installed by
+The Epson 2480/2580 firmware, installed by
 .BR "appscan firmware" .
 .TP
 .I $XDG_DATA_HOME/appscan/sane.d/
-Private SANE configuration
-.RI ( dll.conf ,
+Private SANE configuration for scanners with a quirk profile
+.RI ( dll.conf
+listing only the profile's backend, the backend's configuration such as
 .IR snapscan.conf ,
 and an empty
 .I dll.d/
@@ -408,17 +495,17 @@ directory), written again whenever
 .B appscan
 needs the scanner.
 .TP
-.I $XDG_DATA_HOME/applications/appscan.desktop
+.I $XDG_DATA_HOME/applications/io.github.matteospanio.appscan.desktop
 Desktop menu entry, installed by
-.IR install.sh .
+.BR "appscan setup" .
 .TP
 .I $XDG_DATA_HOME/icons/hicolor/scalable/apps/appscan.svg
 Application icon, installed by
-.IR install.sh .
+.BR "appscan setup" .
 .TP
 .I $XDG_DATA_HOME/man/man1/appscan.1
 This manual page, installed by
-.IR install.sh .
+.BR "appscan setup" .
 .SH ENVIRONMENT
 .TP
 .B XDG_DATA_HOME
@@ -426,26 +513,28 @@ Base directory for data files; ignored unless it is an absolute path.
 Default:
 .IR \(ti/.local/share .
 .B appscan
-cannot use the scanner if its data directory contains a
+cannot use a scanner with a quirk profile if its data directory contains a
 .B :
 or a
 .BR \(dq .
 .TP
-.B SANE_DEBUG_SNAPSCAN
+.BI SANE_DEBUG_ BACKEND
 Passed on to
 .BR scanimage (1)
-to enable debug output from the snapscan backend, for example
-.BR SANE_DEBUG_SNAPSCAN=30 .
+to enable debug output from a SANE backend, for example
+.B SANE_DEBUG_SNAPSCAN=30
+for the Epson scanners.
 .TP
 .B SANE_CONFIG_DIR
-Set by
+For a scanner with a quirk profile,
 .B appscan
-itself when it runs
+sets it when it runs
 .BR scanimage (1),
 replacing any value already set: it points at the private configuration,
 with
 .I /etc/sane.d
 as the fallback.
+Other scanners use the SANE configuration of the system.
 .SH EXIT STATUS
 .TP
 .B 0
@@ -453,25 +542,27 @@ Success, including a multi\-page scan stopped early that saved at least one
 page.
 .TP
 .B 1
-An error occurred, such as an unsupported output file type, a scanner that
-does not answer, or a failing page in a multi\-page scan (the pages before it
+An error occurred, such as a scanner that does not answer, missing firmware, or a failing page in a multi\-page scan (the pages before it
 are still saved); or the scan was cancelled with
 .BR Ctrl\-C .
 .TP
 .B 2
-Invalid usage, such as an unknown option, a value that is not one of the
-choices or out of range,
+Invalid usage, such as an unknown option, an unsupported output file type,
+a value that is not one of the scanner's choices or out of its range, a depth
+of 16 with a
+.B .jpg
+output,
 .B \-\-pages
 without a
 .B .pdf
 output, or an output folder that is not writable.
 .SH INSTALLATION
 .B appscan
-is installed as a
-.B uv
-tool.
-To install it, together with the desktop entry, icon and this manual page,
-and to download the firmware:
+is a single binary.
+To install the latest release into
+.IR \(ti/.local/bin ,
+together with the desktop entry, icon and this manual page, and to download
+the Epson firmware:
 .PP
 .RS 4
 .EX
@@ -481,15 +572,27 @@ https://raw.githubusercontent.com/matteospanio/appscan/main/install.sh \e
 .EE
 .RE
 .PP
-Missing system packages
+The script downloads the prebuilt binary for the machine's architecture
+(x86_64 or aarch64) from GitHub Releases, or builds it with
+.BR cargo (1)
+when that is not possible, then runs
+.B appscan setup
+and
+.BR "appscan firmware" .
+Missing runtime packages
 .RB ( sane\-utils ,
 .BR curl ,
 .BR p7zip\-full ,
 .BR cabextract ,
-.BR python3\-tk )
+.BR libgtk\-4\-1 ,
+.BR libadwaita\-1\-0 )
 are installed with
 .B sudo apt\-get
 when available.
+The prebuilt binary needs glibc 2.35, GTK 4.6 and libadwaita 1.1 or newer.
+Set
+.B APPSCAN_VERSION
+to install a specific release instead of the latest.
 Set
 .B \%APPSCAN_SKIP_FIRMWARE=1
 to skip the firmware download; if it is skipped or fails, run
@@ -506,36 +609,49 @@ https://raw.githubusercontent.com/matteospanio/appscan/main/install.sh \e
 .EE
 .RE
 .SH NOTES
-The first open after power\-on uploads the firmware.
+The first open of an Epson 2480/2580 after power\-on uploads the firmware.
 With sane\-backends 1.1.1 this open often fails once;
 .B appscan
 retries automatically.
 .PP
-After power\-on or a USB reset the lamp needs about 30\(en40 seconds to warm
-up, while later scans start within a few seconds.
+After power\-on or a USB reset the lamp of the Epson needs about 30\(en40
+seconds to warm up, while later scans start within a few seconds.
 Run
 .B appscan warmup
 ahead of time to avoid the wait.
 .PP
-If the scanner is plugged in but not answering,
+If a scanner with a quirk profile is plugged in but not answering,
 .B appscan
 resets it automatically before giving up.
 .PP
-Brightness and contrast range from \-100 to 100 in the GUI, a narrower range
-than the command line accepts.
+Listing scanners without a profile goes through the system SANE
+configuration and can take a while when network backends are enabled;
+.B appscan
+waits up to 60 seconds.
+.PP
+Brightness and contrast range from \-100 to 100 at most in the GUI, which can
+be narrower than the command line accepts.
 .SH BUGS
-Cancelling before image data flows (during the firmware upload or warm\-up),
-or a cancel that hangs in the backend for more than 10 seconds (which happens
-about one time in three), makes
+On the Epson 2480/2580, cancelling before image data flows (during the
+firmware upload or warm\-up), or a cancel that hangs in the backend for more
+than 10 seconds (which happens about one time in three), makes
 .B appscan
 kill
 .BR scanimage (1)
 and reset the scanner.
 .PP
 SANE reports the film unit of the 2580 as unsupported.
+.PP
+Closing the GUI while it is still looking for scanners waits until the search
+ends, up to 60 seconds, with the window already hidden.
 .SH SEE ALSO
 .BR scanimage (1),
 .BR sane\-snapscan (5),
 .BR sane (7)
 .SH AUTHOR
 Matteo Spanio
+.SH COPYRIGHT
+Copyright \(co 2026 Matteo Spanio.
+Released under the MIT license.
+.PP
+This software is based in part on the work of the Independent JPEG Group.

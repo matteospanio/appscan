@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    # Built on 22.04 so the binary runs on glibc 2.35 / GTK 4.6 / libadwaita 1.1 and newer.
+    container: ubuntu:22.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Install system packages
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends curl git ca-certificates \
+            build-essential pkg-config libgtk-4-dev libadwaita-1-dev
+      - uses: actions/checkout@v5
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Check that the tag matches the Cargo.toml version
+        run: |
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version $version"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@1.90
+      - run: cargo build --release --locked
+      - name: Package
+        # install.sh downloads appscan-$VERSION-$(uname -m)-linux.tar.gz and checks it with
+        # sha256sum -c on the .sha256 file next to it.
+        run: |
+          name=appscan-$VERSION-$(uname -m)-linux.tar.gz
+          [ "$(uname -m)" = "${{ matrix.arch }}" ]
+          mkdir -p "dist/appscan-$VERSION"
+          cp target/release/appscan LICENSE README.md "dist/appscan-$VERSION/"
+          cd dist
+          tar -czf "$name" "appscan-$VERSION"
+          sha256sum "$name" > "$name.sha256"
+          tar -tzvf "$name"
+          cat "$name.sha256"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: appscan-${{ matrix.arch }}
+          path: dist/*.tar.gz*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "appscan $GITHUB_REF_NAME" --generate-notes

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    # Build on 22.04 (GTK 4.6, libadwaita 1.1): the oldest system appscan supports.
+    container: ubuntu:22.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Install system packages
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends curl git ca-certificates \
+            build-essential pkg-config libgtk-4-dev libadwaita-1-dev
+      - uses: actions/checkout@v5
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: dtolnay/rust-toolchain@1.90
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo test --locked

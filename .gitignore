@@ -1,5 +1,4 @@
-__pycache__/
-.venv/
 dist/
 # Epson's firmware is proprietary: never commit it (appscan firmware downloads it)
 *.bin
+/target
