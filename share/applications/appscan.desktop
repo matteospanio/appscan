@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=appscan
+GenericName=Scanner
+Comment=Scan documents and photos with the Epson Perfection 2480/2580 PHOTO
+Exec=appscan gui
+Icon=appscan
+Terminal=false
+Categories=Graphics;Scanning;
+Keywords=scan;scanner;epson;perfection;pdf;
+StartupWMClass=appscan
+StartupNotify=true

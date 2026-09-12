@@ -1,0 +1,24 @@
+[project]
+name = "appscan"
+dynamic = ["version"]
+description = "CLI and GUI for the Epson Perfection 2480/2580 PHOTO scanner on Linux"
+readme = "README.md"
+authors = [{ name = "Matteo Spanio" }]
+requires-python = ">=3.10"
+dependencies = ["pillow>=10"]
+
+[project.scripts]
+appscan = "appscan:main"
+
+[project.urls]
+Repository = "https://github.com/matteospanio/appscan"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "appscan.py"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["appscan.py"]

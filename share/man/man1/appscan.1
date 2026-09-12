@@ -1,0 +1,541 @@
+.TH APPSCAN 1 "September 2026" "appscan 0.1.0" "User Commands"
+.SH NAME
+appscan \- scan with the Epson Perfection 2480/2580 PHOTO on Linux
+.SH SYNOPSIS
+.B appscan
+.RB [ gui ]
+.br
+.B appscan scan
+.I OUTPUT
+.RI [ options ]
+.br
+.B appscan list
+.br
+.B appscan warmup
+.br
+.B appscan reset
+.br
+.B appscan firmware
+.br
+.B appscan
+.BR \-\-version " | " \-h
+.SH DESCRIPTION
+.B appscan
+is a command\-line tool and Tk graphical interface for the Epson Perfection
+2480 PHOTO and 2580 PHOTO flatbed scanners.
+It is a thin layer over the
+.B snapscan
+backend of SANE: every scan is performed by
+.BR scanimage (1),
+driven with a private SANE configuration that
+.B appscan
+writes itself.
+No changes to
+.I /etc/sane.d
+are needed and nothing has to run as root.
+.PP
+These scanners need Epson's firmware uploaded every time they are powered on.
+Run
+.B appscan firmware
+once to download and install it; after that, the upload happens automatically
+the first time the scanner is used after power\-on.
+Until the firmware is installed, every command except
+.B firmware
+and
+.B reset
+fails with an error, and the GUI cannot scan.
+.PP
+Without a command,
+.B appscan
+opens the graphical interface.
+It offers drop\-down lists for source, mode, resolution and depth, sliders for
+brightness and contrast (\-100 to 100 in steps of 5, disabled in
+.B Lineart
+mode; double\-click a slider to reset it), a
+.B Preview
+button (a colour scan of the whole area at 50\ dpi), and an area selection
+made by dragging on the preview; without a selection the whole area is scanned.
+.B Scan\&...\&
+asks where to save the file; as with
+.BR "appscan scan" ,
+its extension selects the format.
+Multi\-page PDF documents are built with
+.BR "Add page" ,
+.B "Save PDF\&...\&"
+and
+.BR Discard ;
+while pages are waiting to be saved the resolution cannot be changed.
+A progress bar and a
+.B Cancel
+button follow the running scan.
+On start the GUI warms up the lamp in the background; the scan buttons stay
+disabled until it is done.
+Closing the window, or pressing
+.B Ctrl\-C
+in the terminal that started it, cancels a running scan (or waits for a file
+being written), and asks first if PDF pages have not been saved.
+.SH COMMANDS
+.TP
+.B gui
+Open the graphical interface.
+This is the default when no command is given.
+.TP
+.BI scan " OUTPUT"
+Scan to the file
+.IR OUTPUT .
+The file type is chosen by its extension; see
+.B "Options for scan"
+below.
+Progress is printed on standard error.
+.B Ctrl\-C
+cancels the scan; if it is cancelled before image data starts flowing, or the
+cancel does not finish within 10 seconds, the scanner is reset and its lamp
+must warm up again.
+.TP
+.B list
+List the detected scanners by SANE device name, for example
+.BR snapscan:libusb:001:011 ,
+or print
+.B No scanner found
+if there is none.
+The bus and device numbers change whenever the scanner is replugged.
+.TP
+.B warmup
+Switch the lamp on and wait until it is warm, so that the next scan starts
+immediately.
+A cold lamp needs about 30\(en40 seconds after power\-on or a reset.
+.TP
+.B reset
+Reset the scanner's USB connection when it stops responding, which has the
+same effect as unplugging and replugging it.
+The lamp needs to warm up again afterwards.
+.TP
+.B firmware
+Download Epson's Windows driver from
+.br
+\%https://ftp.epson.com/drivers/epson12204.exe,
+.br
+extract
+.I esfw41.bin
+from it, verify its SHA\-256 checksum and install it.
+The same file serves both the 2480 and the 2580.
+.SH OPTIONS
+.SS "Global options"
+.TP
+.B \-\-version
+Print the version number and exit.
+.TP
+.BR \-h ", " \-\-help
+Print a usage summary and exit.
+Also accepted after a command, as in
+.BR "appscan scan \-h" .
+.SS "Options for scan"
+.TP
+.I OUTPUT
+The file to write.
+Its extension selects the format:
+.BR .png ,
+.B .jpg
+or
+.BR .jpeg ,
+.B .tif
+or
+.BR .tiff ,
+.BR .pnm ,
+.BR .pdf ,
+in upper or lower case.
+.TP
+\fB\-\-mode\fR {\fBColor\fR|\fBGray\fR|\fBLineart\fR}
+Colour mode.
+.B Lineart
+produces pure black and white, suited to text and fax\-like documents;
+it ignores
+.BR \-\-brightness ,
+.B \-\-contrast
+and
+.BR \-\-depth .
+Default:
+.BR Color .
+.TP
+\fB\-r\fR, \fB\-\-resolution\fR \fIDPI\fR
+Resolution in dots per inch; one of 50, 75, 100, 150, 200, 300, 400, 600,
+1200 or 2400.
+Default: 300.
+.TP
+\fB\-\-depth\fR {\fB8\fR|\fB16\fR}
+Bits per colour channel.
+A depth of 16 needs
+.BR .png ,
+.B .tif
+(or
+.BR .tiff )
+or
+.B .pnm
+output; with
+.B .jpg
+or
+.B .jpeg
+it is an error, even in
+.B Lineart
+mode.
+The depth is ignored in
+.B Lineart
+mode and for
+.B .pdf
+output.
+Default: 8.
+.TP
+\fB\-\-source\fR {\fBFlatbed\fR|\fB"Transparency Adapter"\fR}
+Where to scan from.
+The transparency adapter is the unit for film and slides; its scan area is
+55\(mu125\ mm on the 2480 (see
+.B BUGS
+for the 2580).
+Quote the value in the shell, since it contains a space.
+Default:
+.BR Flatbed .
+.TP
+\fB\-\-area\fR \fILEFT TOP WIDTH HEIGHT\fR
+The area to scan, in millimetres, measured from the top\-left corner of the
+scan area of the source.
+Decimal values are accepted.
+Default: the whole scan area of the source (216\(mu297\ mm on the flatbed).
+.TP
+\fB\-\-brightness\fR \fIPERCENT\fR
+Brightness adjustment, a whole number from \-400 to 400.
+Ignored in
+.B Lineart
+mode.
+Default: 0.
+.TP
+\fB\-\-contrast\fR \fIPERCENT\fR
+Contrast adjustment, a whole number from \-100 to 400.
+Ignored in
+.B Lineart
+mode.
+Default: 0.
+.TP
+\fB\-\-pages\fR \fIN\fR
+Only for PDF output: scan
+.I N
+pages into one PDF file.
+A value other than 1 with an output that is not
+.BR .pdf ,
+or a value below 1, is a usage error.
+Before each page after the first,
+.B appscan
+waits for Enter on standard input, giving you time to place the next sheet.
+Stopping early, with
+.B Ctrl\-C
+or end of input (\fBCtrl\-D\fR), still saves the pages scanned so far;
+if no page has been scanned yet, nothing is saved and the scan counts as
+cancelled.
+If a page fails, the pages scanned before it are saved too, and the error is
+reported afterwards.
+Default: 1.
+.PP
+The folder of
+.I OUTPUT
+must be writable; this is checked before scanning starts.
+.PP
+PDF output ignores
+.BR \-\-depth :
+colour and grey pages are 8 bits per channel and JPEG\-compressed, and a PDF
+made only of
+.B Lineart
+pages is 1 bit per pixel and lossless.
+A PDF that mixes
+.B Lineart
+pages with colour or grey pages (possible in the GUI) stores them all as
+JPEG.
+An existing file is replaced only once the new PDF has been written
+completely.
+.B appscan
+assembles the PDF itself from the scanned pages, and each page size matches
+the scanned area at the chosen resolution.
+.SH EXAMPLES
+Quick colour scan of a document at the default 300\ dpi:
+.PP
+.RS 4
+.EX
+appscan scan letter.png
+.EE
+.RE
+.PP
+Greyscale scan at 600\ dpi:
+.PP
+.RS 4
+.EX
+appscan scan \-\-mode Gray \-r 600 page.png
+.EE
+.RE
+.PP
+Crop a 15\(mu10\ cm photo lying 20\ mm from the left edge and 30\ mm from the
+top of the glass, saved as a JPEG:
+.PP
+.RS 4
+.EX
+appscan scan \-r 600 \-\-area 20 30 150 100 holiday.jpg
+.EE
+.RE
+.PP
+Archival scan of a photo as a 16\-bit TIFF:
+.PP
+.RS 4
+.EX
+appscan scan \-r 1200 \-\-depth 16 \-\-area 0 0 130 180 grandma.tif
+.EE
+.RE
+.PP
+Film or slides through the transparency adapter of a 2480 at 2400\ dpi
+(the whole 55\(mu125\ mm area in 16\-bit colour is about 370\ MB):
+.PP
+.RS 4
+.EX
+appscan scan \-\-source "Transparency Adapter" \-r 2400 \e
+    \-\-depth 16 \-\-area 0 0 55 125 film\-01.tif
+.EE
+.RE
+.PP
+A four\-page contract in one PDF; press Enter after placing each new sheet:
+.PP
+.RS 4
+.EX
+appscan scan \-\-mode Gray \-r 200 \-\-pages 4 contract.pdf
+.EE
+.RE
+.PP
+Brighten a faded page and raise its contrast:
+.PP
+.RS 4
+.EX
+appscan scan \-\-brightness 30 \-\-contrast 40 faded.png
+.EE
+.RE
+.PP
+Lineart at 300\ dpi for plain text or fax\-like documents:
+.PP
+.RS 4
+.EX
+appscan scan \-\-mode Lineart \-r 300 memo.png
+.EE
+.RE
+.PP
+Warm the lamp up first in a script, so the scans start without delay:
+.PP
+.RS 4
+.EX
+#!/bin/sh
+set \-e
+appscan warmup
+appscan scan \-r 600 cover.png
+appscan scan \-r 600 back.png
+.EE
+.RE
+.PP
+Batch loop naming each file by date and time; type
+.B q
+at the prompt to stop:
+.PP
+.RS 4
+.EX
+appscan warmup
+while :; do
+    f="receipt\-$(date +%Y%m%d\-%H%M%S).png"
+    appscan scan \-\-mode Gray \-r 200 "$f" || break
+    printf \(aqPlace the next sheet, then Enter (q to quit): \(aq
+    read \-r answer || break
+    [ "$answer" = q ] && break
+done
+.EE
+.RE
+.PP
+Recover when the scanner stops answering:
+.PP
+.RS 4
+.EX
+appscan reset
+appscan warmup
+appscan scan retry.png
+.EE
+.RE
+.PP
+List the connected scanners:
+.PP
+.RS 4
+.EX
+$ appscan list
+snapscan:libusb:001:011
+.EE
+.RE
+.PP
+Install the firmware (needed once, before the first scan):
+.PP
+.RS 4
+.EX
+appscan firmware
+.EE
+.RE
+.PP
+Collect backend debug output for a scan that fails
+.RB ( appscan
+reports the messages of
+.BR scanimage (1),
+debug lines included, only when the scan fails):
+.PP
+.RS 4
+.EX
+SANE_DEBUG_SNAPSCAN=30 appscan scan test.png 2> snapscan.log
+.EE
+.RE
+.SH FILES
+.TP
+.I $XDG_DATA_HOME/appscan/
+Data directory; defaults to
+.IR \(ti/.local/share/appscan/ .
+.TP
+.I $XDG_DATA_HOME/appscan/esfw41.bin
+The scanner firmware, installed by
+.BR "appscan firmware" .
+.TP
+.I $XDG_DATA_HOME/appscan/sane.d/
+Private SANE configuration
+.RI ( dll.conf ,
+.IR snapscan.conf ,
+and an empty
+.I dll.d/
+directory), written again whenever
+.B appscan
+needs the scanner.
+.TP
+.I $XDG_DATA_HOME/applications/appscan.desktop
+Desktop menu entry, installed by
+.IR install.sh .
+.TP
+.I $XDG_DATA_HOME/icons/hicolor/scalable/apps/appscan.svg
+Application icon, installed by
+.IR install.sh .
+.TP
+.I $XDG_DATA_HOME/man/man1/appscan.1
+This manual page, installed by
+.IR install.sh .
+.SH ENVIRONMENT
+.TP
+.B XDG_DATA_HOME
+Base directory for data files; ignored unless it is an absolute path.
+Default:
+.IR \(ti/.local/share .
+.B appscan
+cannot use the scanner if its data directory contains a
+.B :
+or a
+.BR \(dq .
+.TP
+.B SANE_DEBUG_SNAPSCAN
+Passed on to
+.BR scanimage (1)
+to enable debug output from the snapscan backend, for example
+.BR SANE_DEBUG_SNAPSCAN=30 .
+.TP
+.B SANE_CONFIG_DIR
+Set by
+.B appscan
+itself when it runs
+.BR scanimage (1),
+replacing any value already set: it points at the private configuration,
+with
+.I /etc/sane.d
+as the fallback.
+.SH EXIT STATUS
+.TP
+.B 0
+Success, including a multi\-page scan stopped early that saved at least one
+page.
+.TP
+.B 1
+An error occurred, such as an unsupported output file type, a scanner that
+does not answer, or a failing page in a multi\-page scan (the pages before it
+are still saved); or the scan was cancelled with
+.BR Ctrl\-C .
+.TP
+.B 2
+Invalid usage, such as an unknown option, a value that is not one of the
+choices or out of range,
+.B \-\-pages
+without a
+.B .pdf
+output, or an output folder that is not writable.
+.SH INSTALLATION
+.B appscan
+is installed as a
+.B uv
+tool.
+To install it, together with the desktop entry, icon and this manual page,
+and to download the firmware:
+.PP
+.RS 4
+.EX
+curl \-fsSL \e
+https://raw.githubusercontent.com/matteospanio/appscan/main/install.sh \e
+| bash
+.EE
+.RE
+.PP
+Missing system packages
+.RB ( sane\-utils ,
+.BR curl ,
+.BR p7zip\-full ,
+.BR cabextract ,
+.BR python3\-tk )
+are installed with
+.B sudo apt\-get
+when available.
+Set
+.B \%APPSCAN_SKIP_FIRMWARE=1
+to skip the firmware download; if it is skipped or fails, run
+.B appscan firmware
+later.
+.PP
+To uninstall it, together with the data directory and the firmware:
+.PP
+.RS 4
+.EX
+curl \-fsSL \e
+https://raw.githubusercontent.com/matteospanio/appscan/main/install.sh \e
+| bash \-s \-\- \-\-uninstall
+.EE
+.RE
+.SH NOTES
+The first open after power\-on uploads the firmware.
+With sane\-backends 1.1.1 this open often fails once;
+.B appscan
+retries automatically.
+.PP
+After power\-on or a USB reset the lamp needs about 30\(en40 seconds to warm
+up, while later scans start within a few seconds.
+Run
+.B appscan warmup
+ahead of time to avoid the wait.
+.PP
+If the scanner is plugged in but not answering,
+.B appscan
+resets it automatically before giving up.
+.PP
+Brightness and contrast range from \-100 to 100 in the GUI, a narrower range
+than the command line accepts.
+.SH BUGS
+Cancelling before image data flows (during the firmware upload or warm\-up),
+or a cancel that hangs in the backend for more than 10 seconds (which happens
+about one time in three), makes
+.B appscan
+kill
+.BR scanimage (1)
+and reset the scanner.
+.PP
+SANE reports the film unit of the 2580 as unsupported.
+.SH SEE ALSO
+.BR scanimage (1),
+.BR sane\-snapscan (5),
+.BR sane (7)
+.SH AUTHOR
+Matteo Spanio

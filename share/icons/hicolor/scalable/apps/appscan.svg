@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5e5c64"/>
+      <stop offset="1" stop-color="#3d3846"/>
+    </linearGradient>
+    <linearGradient id="pad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#deddda"/>
+      <stop offset="0.6" stop-color="#f6f5f4"/>
+      <stop offset="1" stop-color="#a8ecff"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c0bfbc"/>
+      <stop offset="1" stop-color="#9a9996"/>
+    </linearGradient>
+    <linearGradient id="deck" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#deddda"/>
+      <stop offset="1" stop-color="#f6f5f4"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a5fb4"/>
+      <stop offset="1" stop-color="#0d3a73"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ff0ff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#8ff0ff" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#8ff0ff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <path d="M54,96H202Q206,96 207,100L215,142Q216,146 212,146H44Q40,146 41,142L49,100Q50,96 54,96Z"/>
+    </clipPath>
+  </defs>
+  <g transform="translate(0,6)">
+  <ellipse cx="128" cy="198" rx="112" ry="12" fill="url(#shadow)"/>
+  <!-- lid, slightly open -->
+  <path d="M42,36H214Q230,36 227,50L217,92H39L29,50Q26,36 42,36Z" fill="url(#shell)"/>
+  <path d="M47,47H209Q217,47 216,54L211,78H45L40,54Q39,47 47,47Z" fill="url(#pad)"/>
+  <!-- body -->
+  <path d="M50,84H206Q216,84 219,93L232,150V184Q232,196 220,196H36Q24,196 24,184V150L37,93Q40,84 50,84Z" fill="url(#front)"/>
+  <path d="M50,84H206Q216,84 219,93L232,150Q233,156 226,156H30Q23,156 24,150L37,93Q40,84 50,84Z" fill="url(#deck)" stroke="#77767b" stroke-width="2" stroke-opacity="0.6"/>
+  <path d="M26,157.5H230" stroke="#fff" stroke-width="2" stroke-opacity="0.7"/>
+  <!-- glass, document, scan light -->
+  <path d="M54,96H202Q206,96 207,100L215,142Q216,146 212,146H44Q40,146 41,142L49,100Q50,96 54,96Z" fill="url(#glass)"/>
+  <g clip-path="url(#clip)">
+    <path d="M52,101H122L125,141H45Z" fill="#fff"/>
+    <path d="M60,108H106M59,115H114M57,134H112M56,139H96" stroke="#9a9996" stroke-width="3" stroke-linecap="round"/>
+    <rect x="30" y="118" width="200" height="16" fill="url(#glow)"/>
+  </g>
+  <rect x="36" y="122" width="184" height="8" rx="4" fill="#fff" stroke="#5ce1ff" stroke-width="2"/>
+  <!-- front panel -->
+  <rect x="40" y="173" width="120" height="6" rx="3" fill="#77767b" fill-opacity="0.5"/>
+  <circle cx="210" cy="176" r="6" fill="#33d17a" stroke="#26a269" stroke-width="2"/>
+  </g>
+</svg>
